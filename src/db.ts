@@ -1,7 +1,18 @@
 
 import mongoose, {model,Schema} from "mongoose"
+import dotenv from "dotenv";
 
-mongoose.connect("mongodb+srv://nishan:nishan@cluster0.klk8q.mongodb.net/brainly")
+dotenv.config();
+const url=process.env.DB_URI;
+
+if (!url) {
+    console.error("❌ DB_URI is missing in .env");
+    process.exit(1);
+  }
+  
+mongoose.connect(url)
+
+
 
 const UserSchema=new Schema({
     username:{type: String,unique:true},
