@@ -1,12 +1,20 @@
 import express from "express";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
-import { ContentModel, UserModel } from "./db";
+import { ContentModel, LinkModel, UserModel } from "./db";
 import { JWT_PASSWORD } from "./config";
 import { userMiddleware } from "./middleware";
+import { random} from "./util";
+
+declare global{
+  namespace Express{
+    export interface Request{
+      userId?:string;
+    }
+  }
+}
 
 const app = express();
-
 app.use(express.json());
 
 app.post("/api/v1/signup", async (req, res) => {
@@ -61,7 +69,6 @@ app.post("/api/v1/content",userMiddleware, async (req, res) => {
    await ContentModel.create({
         link,
         title,
-        //@ts-ignore
         userId:req.userId,
         tags:[]
     })
@@ -87,7 +94,6 @@ app.delete("/api/v1/content", async (req, res) => {
     
     await ContentModel.deleteMany({
         contentId,
-        //@ts-ignore
         userId:req.userId
     })
 
@@ -96,8 +102,74 @@ app.delete("/api/v1/content", async (req, res) => {
     })
 });
 
-app.post("/api/v1/brain/share", (req, res) => {});
+app.post("/api/v1/brain/share",userMiddleware,async (req, res) => {
+  const share =req.body.share;
+  if(share){
+    const existingLink=await LinkModel.findOne({
+      userId:req.userId
+    })
+    
+    if(existingLink){
+      res.json({
+        message:existingLink.hash
+      })
+      return;
+    }
+    const hash=random(10);
+    await LinkModel.create({
+      userId:req.userId,
+      hash:hash
+    })
+    
+    res.json({
+      message:"/share/"+hash
+    })
+  }else{
+   await LinkModel.deleteOne({
+      userId:req.userId
+    })
+    res.json({
+      message:"removed link"
+    })
+  }
+ 
+});
 
-app.post("/api/v1/brain/:shareLink", (req, res) => {});
+app.get("/api/v1/brain/:shareLink", async (req, res) => {
+  const hash=req.params.shareLink;
+  const link = await LinkModel.findOne({
+    hash
+  })
+
+  console.log(hash)
+  console.log(link)
+
+  if(!link){
+    res.status(411).json({
+      message:"Sorry incorrect input"
+    })
+    return;
+  }
+
+  const content=await ContentModel.find({
+    userId:link.userId
+  })
+
+  const user=await UserModel.findOne({
+    _id:link.userId
+  })
+
+  if(!user){
+    res.status(411).json({
+      message:"User not found, error should idelly not happen"
+    })
+    return;
+  }
+
+  res.json({
+    username:user.username,
+    content:content 
+  })
+});
 
 app.listen(3000);
