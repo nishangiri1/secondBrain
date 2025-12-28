@@ -5,6 +5,7 @@ import { ContentModel, LinkModel, UserModel } from "./db";
 import { JWT_PASSWORD } from "./config";
 import { userMiddleware } from "./middleware";
 import { random} from "./util";
+import cors from "cors";
 
 declare global{
   namespace Express{
@@ -16,6 +17,7 @@ declare global{
 
 const app = express();
 app.use(express.json());
+app.use(cors());
 
 app.post("/api/v1/signup", async (req, res) => {
   //todo: zod validation and hash the password
@@ -65,10 +67,12 @@ app.post("/api/v1/signin", async (req, res) => {
 app.post("/api/v1/content",userMiddleware, async (req, res) => {
     const link=req.body.link;
     const title=req.body.title;
+    const type=req.body.type;
 
    await ContentModel.create({
         link,
         title,
+        type,
         userId:req.userId,
         tags:[]
     })
@@ -122,7 +126,7 @@ app.post("/api/v1/brain/share",userMiddleware,async (req, res) => {
     })
     
     res.json({
-      message:"/share/"+hash
+      message:hash
     })
   }else{
    await LinkModel.deleteOne({
